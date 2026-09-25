@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f6fafc">
+  <title>Planificación Aserradero · Optimizador de corte</title>
+  <meta name="description" content="Prototipo para explorar esquemas de corte por diámetro con dos escuadrías objetivo y recuperación configurable.">
+  <link rel="icon" type="image/png" href="./glover-logo.png">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand-row">
+        <a class="brand-logo" href="./" aria-label="Planificación Aserradero, inicio"><img src="./glover-logo.png" alt="Glover" width="72" height="72"></a>
+        <div class="brand-copy"><p class="brand-kicker">PLANTA GLOVER · OPTIMIZACIÓN DE ASERRADERO</p><p class="brand-title">Planificación Aserradero</p></div>
+      </div>
+    </div>
+  </header>
+  <main class="workspace">
+    <aside class="configuration">
+      <div class="panel-heading"><div><p class="eyebrow">CONFIGURACIÓN</p><h1>Tu programa de corte</h1></div><span class="step-label">01</span></div>
+      <form id="config-form" novalidate>
+        <fieldset class="objectives"><legend>Escuadrías objetivo <span>mm</span></legend>
+          <div class="product-input objective-a"><div class="product-heading"><span class="letter-tag">A</span><strong>Objetivo A</strong></div><div class="dimension-fields"><label>Espesor<input id="target-a-thickness" name="aThickness" type="number" min="1" max="1000" step="0.1" value="22" required></label><span class="times" aria-hidden="true">×</span><label>Ancho<input id="target-a-width" name="aWidth" type="number" min="1" max="1000" step="0.1" value="125" required></label></div></div>
+          <div class="product-input objective-b"><div class="product-heading"><span class="letter-tag">B</span><strong>Objetivo B</strong><label class="toggle-control"><input id="target-b-enabled" type="checkbox" checked><span class="toggle-slider" aria-hidden="true"></span><span class="toggle-text">Activo</span></label></div><div class="dimension-fields" id="target-b-fields"><label>Espesor<input id="target-b-thickness" name="bThickness" type="number" min="1" max="1000" step="0.1" value="22" required></label><span class="times" aria-hidden="true">×</span><label>Ancho<input id="target-b-width" name="bWidth" type="number" min="1" max="1000" step="0.1" value="110" required></label></div></div>
+        </fieldset>
+        <fieldset class="recoveries"><legend>Escuadrías de recuperación <span>mm</span></legend><div id="recovery-inputs"></div><button class="add-button" type="button" id="add-recovery"><span aria-hidden="true">＋</span> Agregar escuadría</button></fieldset>
+        <label class="criterion-label" for="criterion">Prioridad de optimización</label>
+        <select id="criterion" name="criterion"><option value="both">Ambos objetivos, luego volumen objetivo</option><option value="targets">Mayor volumen objetivo</option><option value="total">Mayor volumen total</option></select>
+        <p class="field-help" id="criterion-help">Busca A y B en el mismo trozo cuando encuentra una combinación. Después prioriza su volumen y la recuperación. La vista muestra el mayor rendimiento entre los esquemas calculados.</p>
+        <details class="parameters"><summary>Parámetros de corte <span aria-hidden="true">⌄</span></summary><div class="parameter-fields">
+          <label>Largo del trozo <span>mm</span><input id="length" name="length" type="number" min="500" max="12000" step="100" value="4000"></label>
+          <label>Kerf carro / huinchas <span>mm</span><input id="kerf-band" name="kerfBand" type="number" min="0.1" max="15" step="0.1" value="3.4"></label>
+          <label>Kerf múltiple <span>mm</span><input id="kerf-gang" name="kerfGang" type="number" min="0.1" max="15" step="0.1" value="4.2"></label>
+          <label>Kerf canteadora <span>mm</span><input id="kerf-edger" name="kerfEdger" type="number" min="0.1" max="15" step="0.1" value="3.8"></label>
+          <label>Margen radial <span>mm</span><input id="margin" name="margin" type="number" min="0" max="15" step="0.1" value="0"></label>
+          <label>Máximo de basas<input id="max-bases" name="maxBases" type="number" min="1" max="3" step="1" value="3"></label>
+          <label>Ancho mínimo basa <span>mm</span><input id="min-base-width" type="number" min="1" max="420" step="0.1" placeholder="Sin límite"></label>
+          <label>Ancho máximo basa <span>mm</span><input id="max-base-width" type="number" min="1" max="420" step="0.1" placeholder="Sin límite"></label>
+        </div><p class="field-help">El margen se descuenta del radio útil. Se consideran hasta dos tablas laterales por lado.</p></details>
+        <div class="run-area"><p class="form-error" id="form-error" role="alert" hidden></p><button type="submit" class="primary-button" id="optimize-button">Optimizar 13 diámetros <span aria-hidden="true">↗</span></button><p class="run-caption" id="run-caption" aria-live="polite">Diámetros originales del catálogo 2025–2026.</p><div class="progress-track" id="progress-track" hidden><div id="progress-fill"></div></div></div>
+      </form>
+    </aside>
+    <section class="results-workspace" aria-label="Resultados de optimización">
+      <div class="results-heading"><div><p class="eyebrow">RESULTADOS DE CORTE</p><h2>Del trozo a la pieza.</h2></div><div class="catalogue-label"><strong>13</strong><span>diámetros<br>del catálogo</span></div></div>
+      <div class="workspace-tabs" role="tablist" aria-label="Vistas de resultados"><button id="tab-patterns" type="button" role="tab" aria-controls="patterns-panel" aria-selected="true" tabindex="0">Esquemas por diámetro</button><button id="tab-order" type="button" role="tab" aria-controls="order-panel" aria-selected="false" tabindex="-1">Simular pedido</button></div>
+      <div id="patterns-panel" role="tabpanel" aria-labelledby="tab-patterns">
+      <div class="diameter-strip" id="diameter-tabs" role="group" aria-label="Seleccionar diámetro"></div>
+      <div class="stale-banner" id="stale-banner" role="status" hidden>Hay cambios sin calcular. Los resultados corresponden a la última configuración optimizada.</div>
+      <section class="alternatives-panel" id="alternatives-panel" aria-labelledby="alternatives-title" hidden>
+        <div class="section-heading"><div><h3 id="alternatives-title">Alternativas optimizadas</h3><p>Selecciona uno de los dos esquemas para revisar su producción y ruta de corte.</p></div><span id="alternative-count">0 / 2</span></div>
+        <div class="alternative-grid" id="alternative-grid" role="group" aria-label="Alternativas de esquema de corte"></div>
+      </section>
+      <section class="pattern-card" aria-label="Detalle del esquema seleccionado">
+        <div class="pattern-top"><div><h3 id="pattern-title">Diámetro 28 cm</h3><p id="pattern-subtitle">Buscando el esquema de mayor rendimiento…</p></div><span class="pattern-state" id="pattern-state">Calculando</span></div>
+        <div class="stage-controls" role="group" aria-label="Etapa de corte"><button type="button" data-stage="0" aria-pressed="true">Vista final</button><button type="button" data-stage="1" aria-pressed="false">1 · Carro Huincha</button><button type="button" data-stage="2" aria-pressed="false">2 · Huinchas</button><button type="button" data-stage="3" aria-pressed="false">3 · Múltiple</button><button type="button" data-stage="4" aria-pressed="false">4 · Canteadora</button></div>
+        <div class="pattern-body"><div class="diagram-panel"><div class="diagram-meta"><span>SECCIÓN TRANSVERSAL</span><span id="length-label">L = 4.000 mm</span></div><div id="cut-diagram" class="cut-diagram" aria-live="off"><div class="diagram-placeholder">Calculando esquema de corte…</div></div><div class="diagram-legend"><span><i class="swatch a"></i>Objetivo A</span><span><i class="swatch b"></i>Objetivo B</span><span><i class="swatch recovery"></i>Recuperación</span></div><div id="machine-cut-legend" class="machine-cut-legend" role="group" aria-label="Colores de cortes por máquina" hidden></div><p class="diagram-detail" id="diagram-detail">Selecciona una pieza para ver sus dimensiones.</p></div>
+          <div class="pattern-summary"><div class="yield-block"><p>Rendimiento según planilla</p><strong id="yield-value">—</strong><span id="yield-note">Volumen aserrado / (D² × L)</span></div><div class="output-totals"><div><span>Volumen por trozo</span><strong id="volume-value">—</strong></div><div><span>Aprovechamiento geométrico</span><strong id="geometric-value">—</strong></div></div><div class="piece-list" id="piece-list"></div></div></div>
+      </section>
+      <div class="export-bar"><p id="export-notice" role="status">Exporta la configuración calculada y sus resultados.</p><div class="button-row"><button type="button" id="print-sheet" class="secondary-button" disabled>Ficha PDF / imprimir</button><button type="button" id="export-csv" class="secondary-button" disabled>Tabla para Excel (CSV)</button></div></div>
+      <details class="model-notes"><summary>Comparar con un esquema histórico validado <span aria-hidden="true">＋</span></summary><p class="field-help">Introduce las cantidades de tu esquema validado para las mismas escuadrías, largo y diámetro. Esta comparación recalcula el volumen; no valida el dibujo histórico.</p><div id="historical-inputs" class="historical-inputs"></div><label class="check-label"><input id="historical-confirm" type="checkbox">Confirmo que el esquema histórico fue validado en planta y usa estas mismas condiciones.</label><button type="button" id="compare-history" class="secondary-button">Comparar cantidades</button><p id="history-result" class="field-help" role="status"></p></details>
+      <section class="all-results" aria-labelledby="all-results-title"><div class="section-heading"><div><h3 id="all-results-title">Todos los diámetros</h3><p id="table-description">Selecciona una fila para inspeccionar el corte.</p></div><span id="computed-label">0 / 13 calculados</span></div><div class="table-scroll"><table id="results-table"><thead><tr><th scope="col">Diámetro</th><th scope="col" id="table-target-a">Objetivo A</th><th scope="col" id="table-target-b">Objetivo B</th><th scope="col">Recuperación</th><th scope="col">Volumen</th><th scope="col">Rendimiento</th><th scope="col"><span class="sr-only">Ver esquema</span></th></tr></thead><tbody id="results-rows"></tbody></table></div></section>
+      <details class="model-notes"><summary>Alcance del prototipo y datos de origen <span aria-hidden="true">＋</span></summary><div><p>Se generan nuevos patrones para los diámetros 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38 y 42 cm, presentes en los esquemas de 2025 y 2026. Los porcentajes históricos no se usan para decidir el corte.</p><p>Modelo de trozo circular y recto, sin corteza, con diámetro constante y medidas reales de aserrío. Se exploran hasta tres basas, posiciones cada 1 mm y dos capas laterales por lado, con kerf por máquina. Todas las piezas se comprueban dentro del círculo útil y sin superposición.</p><p>El motor conserva hasta dos candidatos de distinta producción o composición de basas. Se preselecciona el de mayor rendimiento y puedes revisar ambos. La búsqueda usa descartes internos: no garantiza el óptimo global ni encontrar todas las combinaciones posibles. «No encontrado» no demuestra imposibilidad.</p><p>Los anchos mínimo y máximo de basa se aplican solo cuando los introduces. No se conocen aún el número de sierras, las separaciones admisibles ni la capacidad real para combinar espesores. La simulación usa el esquema de mayor rendimiento calculado para cada diámetro; no programa máquinas ni garantiza el óptimo global de los patrones. Tampoco se modelan conicidad, curvatura, defectos, velocidades ni tiempos de preparación. Valida las configuraciones antes de utilizarlas en producción.</p><p>En Carro Huincha se muestra un corte bajo 34 cm para separar semi-basa y lampazo; desde 34 cm, un corte por basa optimizada, hasta tres. Huinchas completa las caras pendientes y el despiece lateral. Las vistas por etapas mantienen la misma orientación geométrica; no representan los giros de piezas de la línea. Cada máquina tiene un color de corte indicado en la leyenda; las franjas no calculan volumen de aserrín o chip. El rendimiento de planilla usa D² × L y el geométrico usa πD²L/4.</p><p>La comparación histórica es manual, para escuadrías y condiciones iguales, con confirmación de validación por el usuario. No certifica el dibujo histórico ni importa automáticamente esquemas pendientes de validación. Los resultados se exportan a CSV y la ficha seleccionada a PDF desde la impresión del navegador.</p></div></details>
+      </div>
+      <section id="order-panel" class="order-panel" role="tabpanel" aria-labelledby="tab-order" hidden>
+        <div class="order-intro"><p class="eyebrow">SIMULACIÓN DE LOTE</p><h3>Arma tu pedido con los trozos disponibles</h3><p>Indica cuántos trozos tienes por diámetro. La simulación usa el esquema de mayor rendimiento calculado para cada diámetro y suma las piezas y el volumen del lote.</p></div>
+        <p id="order-stale" class="stale-banner" hidden>Hay cambios en los parámetros de corte. Optimiza de nuevo los 13 diámetros antes de simular el pedido.</p>
+        <div class="order-stock"><div><h4>Trozos disponibles por diámetro</h4><p>Cantidad de trozos del mismo largo configurado, en cada diámetro.</p></div><div id="order-inventory-grid" class="order-inventory-grid"></div></div>
+        <div class="order-actions"><button id="simulate-order" type="button" class="primary-button" disabled>Optimizar uso de trozos <span aria-hidden="true">↗</span></button><p id="order-notice" role="status">Esperando los patrones de los 13 diámetros.</p></div>
+        <div id="order-results" hidden>
+          <p id="order-fulfillment" class="order-fulfillment" role="status"></p>
+          <div class="order-metrics"><div><span>Trozos usados</span><strong id="order-total-logs">—</strong></div><div><span>Piezas A</span><strong id="order-total-a">—</strong></div><div id="order-b-metric"><span>Piezas B</span><strong id="order-total-b">—</strong></div><div><span>Volumen aserrado</span><strong id="order-total-volume">—</strong></div><div><span>Rendimiento del lote</span><strong id="order-total-yield">—</strong></div></div>
+          <section class="order-chart-panel" aria-labelledby="order-chart-title"><div class="order-chart-heading"><div><h4 id="order-chart-title">Rendimiento % vs diámetros</h4><p>Solo diámetros con trozos · rendimiento según planilla.</p></div><span id="order-chart-count" class="order-chart-count">—</span></div><div class="order-chart-body"><span class="order-chart-y-title">Rendimiento (%)</span><div id="order-chart-ticks" class="order-chart-ticks" aria-hidden="true"></div><div class="order-chart-scroll" tabindex="0" aria-label="Gráfico de barras desplazable horizontalmente"><div id="order-chart-main" class="order-chart-main"><div id="order-chart-grid" class="order-chart-grid" aria-hidden="true"></div><div id="order-yield-chart" class="order-yield-chart" role="group" aria-label="Rendimiento por diámetro"></div></div></div></div><p class="order-chart-x-title">Diámetro (cm) · Pulsa una columna para ver su esquema</p></section>
+          <section class="all-results order-breakdown" aria-labelledby="order-breakdown-title"><div class="section-heading"><div><h3 id="order-breakdown-title">Uso por diámetro</h3><p>Solo diámetros con trozos ingresados en esta simulación.</p></div></div><div class="table-scroll"><table><thead><tr><th>Diámetro</th><th>Disponibles</th><th>Usados</th><th>Esquema</th><th>Piezas A</th><th class="order-b-cell">Piezas B</th><th>Recuperación</th><th>Volumen</th><th>Rend. %</th></tr></thead><tbody id="order-breakdown-rows"></tbody></table></div></section>
+          <p class="order-method-note">Se usan todos los trozos con patrón disponible. Para cada diámetro se muestra el esquema de mayor rendimiento entre los calculados; la búsqueda puede no incluir el óptimo global. El rendimiento del lote es el volumen total aserrado dividido por el volumen de referencia total de los trozos usados.</p>
+        </div>
+      </section>
+      <footer class="workspace-footer"><span>Corte / Prototipo de aserradero</span><span>Geometría en mm · Volúmenes en m³</span></footer>
+    </section>
+  </main>
+  <section id="print-area" aria-label="Ficha para impresión"></section>
+  <noscript><p>Activa JavaScript para calcular los esquemas de corte.</p></noscript>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

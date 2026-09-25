@@ -1,0 +1,17 @@
+.sites-runtime/
+node_modules/
+*.log
+tmp/
+
+# Perfil de Chrome de las pruebas visuales (contiene cookies y datos de sesión)
+.browser-qa*/
+
+# Artefactos de revisión visual
+print-qa-*.pdf
+print-qa-*.png
+.print-qa.py
+design-qa*.png
+design-qa.md
+
+# Documentos internos de Glover
+*.pdf
